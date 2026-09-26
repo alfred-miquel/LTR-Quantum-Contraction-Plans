@@ -1,4 +1,6 @@
-## notebook: model predictions. Required functions
+################################################################################
+## Notebook: model predictions — required functions
+################################################################################
 
 using Statistics
 using XGBoost
@@ -6,92 +8,113 @@ using XLSX
 using DataFrames
 
 
-# features from the article
+# Features used in the article
 
 feature_names = [
-        "max_cost",              # 1. max cost
-        "log2_sum_flops_val",    # 2. log2 sum flops
-        "topq_mean",             # 3. topq mean cost
-        "avg_cost",              # 4. avg cost
-        "std_cost",              # 5. std cost
-        "n_steps",               # 6. n steps
-        "frac_tiny",             # 7. frac tiny steps
-        "max_out_rank",          # 8. max out rank
-        "avg_out_rank",          # 9. avg out rank
-        "costw_out_rank",        # 10. costw out rank
-        "p_at_max_cost_val",     # 11. p at max cost
-        "max_red_rank_val",      # 12. max red rank
-        "costw_red_rank_val",    # 13. costw red rank
-        "k_at_max_cost_val",     # 14. k at max cost
-        "max_asym_val",          # 15. max asym 
-        "avg_asym",              # 16. avg asym
-        "costw_asym_val",        # 17. costw asym 
-        "d_at_max_cost_val"      # 18. d at max cost
-    ]
+    "max_cost",              # 1.  max cost
+    "log2_sum_flops_val",    # 2.  log2 sum flops
+    "topq_mean",             # 3.  topq mean cost
+    "avg_cost",              # 4.  avg cost
+    "std_cost",              # 5.  std cost
+    "n_steps",               # 6.  number of steps
+    "frac_tiny",             # 7.  fraction of tiny steps
+    "max_out_rank",          # 8.  max output rank
+    "avg_out_rank",          # 9.  avg output rank
+    "costw_out_rank",        # 10. cost-weighted output rank
+    "p_at_max_cost_val",     # 11. p at max cost
+    "max_red_rank_val",      # 12. max reduction rank
+    "costw_red_rank_val",    # 13. cost-weighted reduction rank
+    "k_at_max_cost_val",     # 14. k at max cost
+    "max_asym_val",          # 15. max asymmetry
+    "avg_asym",              # 16. avg asymmetry
+    "costw_asym_val",        # 17. cost-weighted asymmetry
+    "d_at_max_cost_val"      # 18. d at max cost
+]
 
 
-
+# Reduced feature subset (13 features) used by the model
 features_13 = [
-
-            
- "std_cost"
- "n_steps"
- "frac_tiny"
- "max_out_rank"
- "avg_out_rank"
- "costw_out_rank"
- "p_at_max_cost_val"
- "max_red_rank_val"
- "k_at_max_cost_val"
- "max_asym_val"
- "avg_asym"
- "costw_asym_val"
- "d_at_max_cost_val"
-   
-    ]
+    "std_cost",
+    "n_steps",
+    "frac_tiny",
+    "max_out_rank",
+    "avg_out_rank",
+    "costw_out_rank",
+    "p_at_max_cost_val",
+    "max_red_rank_val",
+    "k_at_max_cost_val",
+    "max_asym_val",
+    "avg_asym",
+    "costw_asym_val",
+    "d_at_max_cost_val"
+]
 
 
+"""
+    llegir_dataframe_excel_corregit(ruta_arxiu::String;
+                                   nom_full::String="", versio=false)
 
+Read a `DataFrame` from an Excel file (corrected version).
 
-function llegir_dataframe_excel_corregit(ruta_arxiu::String; nom_full::String="",versio=false)
-    """
-    Llegeix un DataFrame des d'un arxiu Excel (versió corregida).
-    """
-    
+# Arguments
+- `ruta_arxiu::String`: path to the Excel file.
+- `nom_full::String=""`: name of the sheet to read. If empty, the first sheet
+  is used.
+- `versio::Bool=false`: if `true`, the Excel file handle is explicitly closed
+  after reading.
+
+# Returns
+- `df::DataFrame`: the data read from the selected sheet.
+"""
+function llegir_dataframe_excel_corregit(ruta_arxiu::String;
+                                         nom_full::String="", versio=false)
     try
-        # Mostrar informació dels fulls disponibles
+        # Show information about the available sheets
         xf = XLSX.readxlsx(ruta_arxiu)
         fulls = XLSX.sheetnames(xf)
-        println("📑 Fulls disponibles: $fulls")
-        
-        # Determinar quin full llegir
+        println("📑 Available sheets: $fulls")
+
+        # Decide which sheet to read
         full_a_llegir = isempty(nom_full) ? fulls[1] : nom_full
-        println("📖 Llegint full: '$full_a_llegir'")
-        
-        # Llegir les dades com a DataTable
+        println("📖 Reading sheet: '$full_a_llegir'")
+
+        # Read the data as a DataTable
         datatable = XLSX.readtable(ruta_arxiu, full_a_llegir)
-        
-        # Convertir DataTable a DataFrame
+
+        # Convert the DataTable into a DataFrame
         df = DataFrame(datatable)
 
         if versio == true
-          # Tancar el fitxer
-          XLSX.close(xf)
+            # Close the file
+            XLSX.close(xf)
         end
-        
-        println("✅ DataFrame llegit correctament")
-        println("📊 Dimensions: $(nrow(df)) files × $(ncol(df)) columnes")
-        println("📋 Columnes: $(names(df))")
-        
+
+        println("✅ DataFrame successfully read")
+        println("📊 Dimensions: $(nrow(df)) rows × $(ncol(df)) columns")
+        println("📋 Columns: $(names(df))")
+
         return df
-        
+
     catch e
-        println("❌ Error en llegir l'arxiu Excel: $e")
+        println("❌ Error while reading the Excel file: $e")
         rethrow(e)
     end
 end
 
 
+"""
+    selecciona_columnes(df, columnes)
+
+Select the given `columnes` from `df`, raising an error if any of them is
+missing.
+
+# Arguments
+- `df`: the input `DataFrame`.
+- `columnes`: iterable of column names to select.
+
+# Returns
+- A new `DataFrame` containing only the requested columns.
+"""
 function selecciona_columnes(df, columnes)
     disponibles = Set(names(df))
     faltants = [c for c in columnes if !(c in disponibles)]
@@ -102,46 +125,73 @@ function selecciona_columnes(df, columnes)
 end
 
 
+"""
+    create_circuit_dataframe_direct(id_circuits, features_v, feature_names)
+
+Build a `DataFrame` from a list of circuit identifiers and their corresponding
+feature vectors.
+
+# Arguments
+- `id_circuits`: vector of circuit identifiers (stored in the `circuit_name`
+  column).
+- `features_v`: vector of feature vectors, one per circuit.
+- `feature_names`: names of the features, in the same order as the entries of
+  each feature vector.
+
+# Returns
+- `df::DataFrame`: one row per circuit, one column per feature.
+"""
+function create_circuit_dataframe_direct(id_circuits, features_v, feature_names)
+
+    # Check dimensions
+    if length(id_circuits) != length(features_v)
+        error("circuit names and features do not match")
+    end
+
+    # DataFrame
+    df = DataFrame()
+    df.circuit_name = id_circuits
+
+    # Fill it with features
+    for (i, feature_name) in enumerate(feature_names)
+        df[!, Symbol(feature_name)] = [feature_vector[i] for feature_vector in features_v]
+    end
+
+    return df
+end
 
 
-       
-       function create_circuit_dataframe_direct(id_circuits, features_v, feature_names)
-        
-           # checking dimensions
-           if length(id_circuits) != length(features_v)
-               error("circuit names and features do not match")
-           end
+"""
+    getting_candidate_plan(model, nom_v, features_v, feature_names, features_13;
+                           empat=false)
 
-           # DataFrame
-           df = DataFrame()
-           df.circuit_name = id_circuits
+Use the trained `model` to score a set of candidate contraction plans and print
+the best one (or the set of best ones, in case of ties).
 
-           # filling it with features
-           for (i, feature_name) in enumerate(feature_names)
-               df[!, Symbol(feature_name)] = [feature_vector[i] for feature_vector in features_v]
-           end
+# Arguments
+- `model`: trained XGBoost model used to predict speedups.
+- `nom_v`: vector of candidate plan identifiers.
+- `features_v`: vector of feature vectors, one per candidate plan.
+- `feature_names`: full list of feature names.
+- `features_13`: subset of feature names actually consumed by the model.
+- `empat::Bool=false`: if `true`, print every candidate achieving the maximum
+  predicted speedup; otherwise print only the first one.
+"""
+function getting_candidate_plan(model, nom_v, features_v, feature_names, features_13;
+                                empat=false)
 
-           return df
-       end
-
-
-
-
-
-function getting_candidate_plan(model,nom_v,features_v,feature_names,features_13; empat =false)
-    
-    df = create_circuit_dataframe_direct(nom_v, features_v,feature_names)
-    columnes = append!(["circuit_name"],features_13)
+    df = create_circuit_dataframe_direct(nom_v, features_v, feature_names)
+    columnes = append!(["circuit_name"], features_13)
     df_filtrat = selecciona_columnes(df, columnes)
 
-    circuit_ids,predictions=Prediccions_X(model, df_filtrat)
+    circuit_ids, predictions = Prediccions_X(model, df_filtrat)
     valors, posicions = maxims_i_posicions(predictions)
-    
-  if empat == false
+
+    if empat == false
         nom_complet = nom_v[posicions[1]]
         nom_circuit = split(nom_complet, "_pla_")[2]
-        
-    println("Our plan candidate : $(nom_circuit)")
+
+        println("Our plan candidate : $(nom_circuit)")
 
     else
         println("Our plan candidates: ")
@@ -151,9 +201,22 @@ function getting_candidate_plan(model,nom_v,features_v,feature_names,features_13
             println(nom_circuit)
         end
     end
-    return 
+    return
 end
 
+
+"""
+    maxims_i_posicions(v)
+
+Return the maximum value of `v` together with the indices at which it occurs.
+
+# Arguments
+- `v`: numeric vector.
+
+# Returns
+- `(valors, posicions)`: a vector filled with the maximum value (one entry per
+  occurrence) and the vector of positions where the maximum is attained.
+"""
 function maxims_i_posicions(v)
     max_val = maximum(v)
     posicions = findall(==(max_val), v)
@@ -162,37 +225,67 @@ function maxims_i_posicions(v)
 end
 
 
-# Individual prediction
-function Prediu_Speedup(model,dades_features)
-        
-    # Converteix a matriu (1 observació, n característiques)
+"""
+    Prediu_Speedup(model, dades_features)
+
+Predict the speedup for a single observation.
+
+# Arguments
+- `model`: trained XGBoost model.
+- `dades_features`: feature vector for a single observation.
+
+# Returns
+- `prediction::Float64`: the predicted speedup.
+"""
+function Prediu_Speedup(model, dades_features)
+
+    # Reshape into a matrix (1 observation, n features)
     X_new = reshape(dades_features, 1, :)
-    
-    # Fes la predicció
+
+    # Make the prediction
     prediction = XGBoost.predict(model, X_new)
-    
+
     return prediction[1]
 end
 
 
-### Predictions in a grup
+"""
+    Prediccions_X(model, df_circuits)
 
+Compute predictions for every row of `df_circuits`.
+
+# Arguments
+- `model`: trained XGBoost model.
+- `df_circuits::DataFrame`: table of candidate plans; the first column holds
+  the circuit identifiers and columns 2:14 hold the features.
+
+# Returns
+- `(circuit_ids, predictions)`: the vector of circuit identifiers and the
+  vector of predicted speedups.
+"""
 function Prediccions_X(model, df_circuits)
-    
-    circuit_ids= df_circuits.circuit_name
-      
+
+    circuit_ids = df_circuits.circuit_name
+
     predictions = Float64[]
-    
-    
+
     for id in 1:length(circuit_ids)
-        
-        dades_features = Vector{Float64}(df_circuits[id,Cols(2:14)])
-        predicted_speedup = Prediu_Speedup(model,dades_features)
-        
+
+        dades_features = Vector{Float64}(df_circuits[id, Cols(2:14)])
+        predicted_speedup = Prediu_Speedup(model, dades_features)
+
         push!(predictions, predicted_speedup)
-        
+
     end
-    
-    
-    return (circuit_ids=circuit_ids,predictions=predictions)
+
+    return (circuit_ids=circuit_ids, predictions=predictions)
 end
+
+
+
+
+
+
+
+
+
