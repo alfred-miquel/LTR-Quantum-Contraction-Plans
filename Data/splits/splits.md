@@ -1,1 +1,1 @@
-Posarem les particions train + val + test+ ood
+Dataset used in training process
