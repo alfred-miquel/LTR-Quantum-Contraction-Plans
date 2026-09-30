@@ -281,7 +281,84 @@ function Prediccions_X(model, df_circuits)
     return (circuit_ids=circuit_ids, predictions=predictions)
 end
 
+"""
+    getting_ordered_plans(model, nom_v, features_v, feature_names, features_13;
+                          n=7, verbose=true)
 
+Rank a set of candidate contraction plans using a trained LTR model and
+return the top `n` plan identifiers, ordered from best to worst predicted
+speedup.
+
+The candidate plans are first collected into a `DataFrame`, restricted to
+the model's feature set (`features_13`), and scored via `Prediccions_X`. The
+predictions are then sorted in descending order, and the plans whose
+predicted score matches each distinct value are grouped together, so that
+tied candidates are kept together. The top `n` plan identifiers (with the
+`_pla_` prefix stripped) are returned as a vector.
+
+# Arguments
+- `model`: trained XGBoost model.
+- `nom_v`: vector of candidate plan identifiers (one per feature vector).
+- `features_v`: vector of feature vectors, one per candidate plan.
+- `feature_names`: full list of feature names.
+- `features_13`: subset of feature names actually consumed by the model.
+- `n::Int=7`: number of top candidates to return.
+- `verbose::Bool=true`: if `true`, the ordered candidates are printed to
+  stdout.
+
+# Returns
+- `plans_ordenats::Vector{String}`: the top `n` plan identifiers, ordered
+  from best to worst predicted speedup.
+"""
+function getting_ordered_plans(model, nom_v, features_v, feature_names, features_13;
+                               n=7, verbose=true)
+
+    resultats = []
+    plans_ordenats = []
+
+    # Build the candidate data frame, keeping only the model's features
+    df = create_circuit_dataframe_direct(nom_v, features_v, feature_names)
+    columnes = append!(["circuit_name"], features_13)
+    df_filtrat = selecciona_columnes(df, columnes)
+
+    # Score every candidate
+    circuit_ids, v = Prediccions_X(model, df_filtrat)
+
+    # Distinct predicted values, sorted in descending order
+    prediccions_uniques = sort(unique(v), rev=true)
+
+    # Group candidates by distinct predicted score
+    j = 0
+    for prev in prediccions_uniques
+        j = j + 1
+        indices_top_pred = findall(x -> x ≈ prediccions_uniques[j], v)
+        quantitat = length(indices_top_pred)
+        circuits = [circuit_ids[i] for i in indices_top_pred]
+        push!(resultats, circuits)
+    end
+
+    # Flatten the per-score groups into a single ordered list
+    tots = resultats[1]
+    for i in 2:length(resultats)
+        tots = union(tots, resultats[i])
+    end
+
+    if verbose == true
+        println("Our $n ordered plan candidates: ")
+    end
+
+    # Extract the top `n` plan identifiers, stripping the `_pla_` prefix
+    for i in 1:n
+        nom_complet = tots[i]
+        nom_pla = split(nom_complet, "_pla_")[2]
+        if verbose == true
+            println(nom_pla)
+        end
+        push!(plans_ordenats, nom_pla)
+    end
+
+    return plans_ordenats
+end
 
 
 
