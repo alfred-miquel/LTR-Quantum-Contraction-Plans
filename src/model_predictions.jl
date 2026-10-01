@@ -32,7 +32,7 @@ feature_names = [
 ]
 
 
-# Reduced feature subset (13 features) used by the model
+# Reduced feature subset (13 features) used by the ndcg model
 features_13 = [
     "std_cost",
     "n_steps",
@@ -49,9 +49,29 @@ features_13 = [
     "d_at_max_cost_val"
 ]
 
+features_13_pair = [
+
+ "n_steps"
+ "frac_tiny"
+ "max_out_rank"
+ "avg_out_rank"
+ "costw_out_rank"
+ "p_at_max_cost_val"
+ "max_red_rank_val"
+ "costw_red_rank_val"
+ "k_at_max_cost_val"
+ "max_asym_val"
+ "avg_asym"
+ "costw_asym_val"
+ "d_at_max_cost_val"
+
+    ]
+
+
+
 
 """
-    llegir_dataframe_excel_corregit(ruta_arxiu::String;
+    Excel_to_df(ruta_arxiu::String;
                                    nom_full::String="", versio=false)
 
 Read a `DataFrame` from an Excel file (corrected version).
@@ -66,7 +86,7 @@ Read a `DataFrame` from an Excel file (corrected version).
 # Returns
 - `df::DataFrame`: the data read from the selected sheet.
 """
-function llegir_dataframe_excel_corregit(ruta_arxiu::String;
+function Excel_to_df(ruta_arxiu::String;
                                          nom_full::String="", versio=false)
     try
         # Show information about the available sheets
