@@ -1,17 +1,22 @@
 # Learning-to-Rank-Tensor-Network-Contraction-Plans-for-GPU-Accelerated-Quantum-Circuit-Simulation
 
+This repository contains the code, data, trained models, and analysis notebooks supporting the results presented in:
+
 *Pastor, A. M., Castillo, M., & Badía, J. M. (2026). Learning to Rank Tensor Network Contraction Plans for GPU-Accelerated Quantum Circuit Simulation. arXiv preprint arXiv:2608.05819.*
 
-The circuit instances, candidate contraction plans, measured execution times, feature-extraction scripts, and analysis code supporting this study will be made available in this public repository upon publication.
+The repository includes the circuit instances, candidate contraction plans, measured execution times, feature-extraction scripts, trained models, and analysis code used to obtain the results reported in the paper.
+
 
 
 ## Contents
 
 ### `src`
-The `src` directory contains the software implementation of the article using Julia as a programming language.
+The `src` directory contains the software implementation of the article using Julia as a programming language. This code is employed to generate and analyze contraction plans.
+
 
 ### `Data`
-This directory contains all the data used in the article split into various subdirectories
+This directory contains all the data used in the article split into various subdirectories: circuit instances, contraction plans, measured execution times,
+  and derived features used in the experiments.
 
 ### `Jupyter Notebooks`
 Various commented Jupyter notebooks are provided to test the algorithms and replicate experimental results included in the article. These notebooks guide users through setting up and running the experiments step by step.
@@ -118,3 +123,12 @@ To explore the algorithms further, open one of the provided notebooks:
 ---
 
 We hope this repository provides valuable resources for exploring and experimenting with the article's code!
+
+## License
+
+The source code in this repository is released under the MIT License.
+
+The datasets and experimental results contained in the `Data` directory
+are released under the Creative Commons Attribution 4.0 International
+(CC BY 4.0) license.
+
