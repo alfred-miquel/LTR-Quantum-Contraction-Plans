@@ -227,7 +227,7 @@ function export_to_qasm(circ, filename)
 end
 
 
-###########
+#### Improvements added on 15 July 2025
 
 
 # This function fixes the bug present in the previous version of the function:
@@ -781,7 +781,139 @@ function process_gate_line!(circ::QXZoo.Circuit.Circ, line::String)
             # Extract and convert the values
             angle_str  = m.captures[1]
             qubit1_str = m.captures[2]
-            qubit2_str = m.c
-            
-          
-                    
+            qubit2_str = m.captures[3]
+
+            # Parse the angle (may contain expressions like pi/2)
+            angle = eval(Meta.parse(angle_str))
+
+            # Convert the qubits to integers
+            qubit1 = parse(Int, qubit1_str) + 1
+            qubit2 = parse(Int, qubit2_str) + 1
+
+            phi = angle
+            # lambda = angle2
+
+            nova_porta_2q_cu1 = create_gate_2q("nova_porta_2q_cu1", phase_gate_2qubits(phi))
+            # circ << u(nova_porta_1q_u2, qubit)
+            circ << c_u(nova_porta_2q_cu1, qubit1, qubit2)
+
+        # Swap gate
+        elseif occursin(r"^swap\s+q\[", line)
+            m = match(r"swap\s+q\[(\d+)\],\s*q\[(\d+)\];", line)
+            qubit1 = parse(Int, m.captures[1]) + 1
+            qubit2 = parse(Int, m.captures[2]) + 1
+            Circuit.add_gatecall!(circ, swap(qubit1, qubit2))
+
+        # Controlled phase (CP) parametric gate
+        elseif occursin(r"^cp\(", line)
+            m = match(r"cp\((.*)\)\s+q\[(\d+)\],\s*q\[(\d+)\];", line)
+            if m !== nothing
+                angle = eval(Meta.parse(m.captures[1]))
+                ctrl = parse(Int, m.captures[2]) + 1
+                target = parse(Int, m.captures[3]) + 1
+                # add_gatecall!(circ, c_phase(ctrl, target, angle))
+                circ << c_r_phase(target, ctrl, angle)
+            else
+                @warn "Invalid format for CP gate: $line"
+            end
+
+        else
+            println(" Unprocessed element: $line ")
+        end
+    catch e
+        @warn "Could not process the line: $line. Error: $e"
+    end
+end
+
+
+## Adapt QPE files so that they can be used in QXZoo by renaming the qubits
+
+"""
+    replace_qasm_registers_qpe_exact(input_file::String,
+                                     output_file::String="output.qasm")
+
+Adapt QPE (Quantum Phase Estimation) QASM files so that they can be used in
+QXZoo by renaming the `node`, `coin` and `psi` registers into a single `q`
+register.
+
+# Arguments
+- `input_file::String`: path to the input QASM file.
+- `output_file::String="output.qasm"`: path to the rewritten QASM file.
+
+# Returns
+- `new_content::String`: the rewritten QASM content.
+"""
+function replace_qasm_registers_qpe_exact(input_file::String, output_file::String="output.qasm")
+    # Read the file content
+    content = read(input_file, String)
+
+    # Build the substitution dictionary
+    replacements = Dict{String,String}()
+
+    # Process the register definitions
+    node_q = 0
+    node_count = 0
+    coin_count = 0
+    psi_count = 0
+
+    # Locate the register definitions
+    for line in split(content, '\n')
+        # println(line)
+        if occursin(r"qreg\s+node\[(\d+)\];", line)
+            node_count = parse(Int, match(r"qreg\s+node\[(\d+)\];", line).captures[1])
+            println("node_count: $node_count")
+        elseif occursin(r"qreg\sq\[(\d+)\];", line)
+            node_q = parse(Int, match(r"qreg\sq\[(\d+)\];", line).captures[1])
+            println("node_q: $node_q")
+        elseif occursin(r"qreg\s+coin\[(\d+)\];", line)
+            coin_count = parse(Int, match(r"qreg\s+coin\[(\d+)\];", line).captures[1])
+            println(coin_count)
+            println("coin count:$coin_count")
+        elseif occursin(r"qreg\s+psi\[(\d+)\];", line)
+            psi_count = parse(Int, match(r"qreg\s+psi\[(\d+)\];", line).captures[1])
+            println("psi count:$psi_count")
+        end
+    end
+
+    # Build the substitution for `node`
+    for i in 0:(node_count-1)
+        replacements["node[$i]"] = "q[$i]"
+    end
+
+    # Build the substitution for `coin`
+    for i in 0:(coin_count-1)
+        replacements["coin[$i]"] = "q[$(i+node_count)]"
+    end
+
+    # Build the substitution for `flag` (here: `psi`)
+    for i in 0:(psi_count-1)
+        replacements["psi[$i]"] = "q[$(i+node_q)]"
+    end
+
+    # Apply the substitutions
+    new_content = content
+    for (old, new) in replacements
+        new_content = replace(new_content, old => new)
+    end
+
+    # Replace the register definitions
+    if node_q > 0 || node_count > 0 || coin_count > 0 || psi_count > 0
+        total_qubits = node_count + coin_count + psi_count + node_q
+        # println(total_qubits)
+        # new_content = replace(new_content, r"qreg\s+node\[\d+\];\s*qreg\s+coin\[\d+\];" => "qreg q[$total_qubits];")
+        new_content = replace(new_content,
+                              r"qreg\s+q\[\d+\];\s*qreg\s+psi\[\d+\];" =>
+                              "qreg q[$total_qubits];")
+        # println(new_content)
+    end
+
+    # Write the output file
+    write(output_file, new_content)
+
+    return new_content
+end
+
+
+
+
+
