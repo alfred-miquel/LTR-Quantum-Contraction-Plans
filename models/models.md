@@ -1,1 +1,1 @@
-Here we are some models used in the article in json format
+Here we are the main models in production used in the article in json format 
