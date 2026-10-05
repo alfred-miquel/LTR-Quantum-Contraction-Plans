@@ -1,5 +1,6 @@
-Dataset used in training process in both models, pair and ndcg. The file format is .xlsx. 
+Dataset used in the training process in both models, pair and ndcg. The file format in all cases is .xlsx. 
 
+Df_final files were used in the training and validation processes while df_test and df_ood were used during testing processes.
 
 In the process of getting the files we used the features :
 
